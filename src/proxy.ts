@@ -1,20 +1,19 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/login', '/auth/callback']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public paths
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
-  // Check auth from cookie
-  const accessToken = request.cookies.get('sb-ynpqmfyafesxqvzqmszp-auth-token')?.value
+  // Check Supabase auth cookie
+  const cookieName = `sb-ynpqmfyafesxqvzqmszp-auth-token`
+  const hasToken = request.cookies.has(cookieName)
 
-  if (!accessToken) {
+  if (!hasToken) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
