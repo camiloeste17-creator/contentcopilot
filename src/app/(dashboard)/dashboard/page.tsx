@@ -10,11 +10,12 @@ import { useBrandStore } from '@/store/brand'
 import {
   TrendingUp, Video, Users, Eye, Zap, AlertTriangle,
   CheckCircle2, ArrowRight, Lightbulb, Heart, MessageSquare,
-  RefreshCw, ExternalLink,
+  RefreshCw, ExternalLink, Link2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useInstagramToken } from '@/hooks/useInstagramToken'
 
 interface IGProfile {
   username: string
@@ -139,18 +140,20 @@ function MediaCard({ item }: { item: IGMediaItem }) {
 
 export default function DashboardPage() {
   const brand = useBrandStore((s) => s.brand)
+  const { token: igToken, loading: tokenLoading } = useInstagramToken()
   const [profile, setProfile] = useState<IGProfile | null>(null)
   const [media, setMedia] = useState<IGMediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  async function fetchData() {
+  async function fetchData(token: string) {
     setLoading(true)
     setError(null)
     try {
+      const headers = { 'X-Instagram-Token': token }
       const [profileRes, mediaRes] = await Promise.all([
-        fetch('/api/instagram/profile'),
-        fetch('/api/instagram/media'),
+        fetch('/api/instagram/profile', { headers }),
+        fetch('/api/instagram/media', { headers }),
       ])
       const profileData = await profileRes.json()
       const mediaData = await mediaRes.json()
@@ -167,7 +170,11 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    if (tokenLoading) return
+    if (igToken) fetchData(igToken)
+    else setLoading(false)
+  }, [igToken, tokenLoading])
 
   const hasBrand = !!brand?.niche
   const reels = media.filter(m => m.media_type === 'VIDEO' || m.media_type === 'REELS')
@@ -185,6 +192,28 @@ export default function DashboardPage() {
       />
 
       <div className="p-6 space-y-6">
+        {/* Instagram connection banner */}
+        {!tokenLoading && !igToken && (
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-sm mb-1">Conecta tu Instagram</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Vincula tu cuenta para ver tus métricas, reels y análisis de audiencia.
+                  </p>
+                  <Link href="/onboarding">
+                    <Button size="sm" className="gap-2">
+                      <Link2 className="w-3.5 h-3.5" /> Conectar Instagram
+                    </Button>
+                  </Link>
+                </div>
+                <Link2 className="w-8 h-8 text-amber-400/40 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Brand setup banner */}
         {!hasBrand && (
           <Card className="border-primary/30 bg-primary/5">
@@ -213,7 +242,7 @@ export default function DashboardPage() {
             <AlertTriangle className="w-4 h-4 text-destructive" />
             <AlertDescription className="text-sm flex items-center justify-between">
               <span>Error al conectar con Instagram: {error.slice(0, 120)}</span>
-              <Button variant="ghost" size="sm" onClick={fetchData} className="gap-1.5 ml-4 flex-shrink-0">
+              <Button variant="ghost" size="sm" onClick={() => igToken && fetchData(igToken)} className="gap-1.5 ml-4 flex-shrink-0">
                 <RefreshCw className="w-3.5 h-3.5" /> Reintentar
               </Button>
             </AlertDescription>
@@ -273,7 +302,7 @@ export default function DashboardPage() {
                 Contenido reciente
               </h2>
               {!loading && (
-                <Button variant="ghost" size="sm" onClick={fetchData} className="gap-1.5 text-xs">
+                <Button variant="ghost" size="sm" onClick={() => igToken && fetchData(igToken)} className="gap-1.5 text-xs">
                   <RefreshCw className="w-3.5 h-3.5" /> Actualizar
                 </Button>
               )}

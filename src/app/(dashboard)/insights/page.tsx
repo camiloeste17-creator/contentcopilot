@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Topbar } from '@/components/layout/Topbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useBrandStore } from '@/store/brand'
+import { useInstagramToken } from '@/hooks/useInstagramToken'
 import { Zap, Sparkles, RefreshCw, AlertTriangle, TrendingUp, Lightbulb } from 'lucide-react'
 
 interface RecommendationBlock {
@@ -45,6 +46,7 @@ function parseRecommendations(text: string): RecommendationBlock[] {
 
 export default function InsightsPage() {
   const brand = useBrandStore((s) => s.brand)
+  const { token: igToken, loading: tokenLoading } = useInstagramToken()
   const [streaming, setStreaming] = useState(false)
   const [output, setOutput] = useState('')
   const [recs, setRecs] = useState<RecommendationBlock[]>([])
@@ -52,13 +54,12 @@ export default function InsightsPage() {
   const [loadingIG, setLoadingIG] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Load IG data on mount
-  useEffect(() => {
-    async function loadIG() {
-      try {
+  const loadIG = useCallback(async (token: string) => {
+    try {
+      const headers = { 'X-Instagram-Token': token }
         const [profileRes, mediaRes] = await Promise.all([
-          fetch('/api/instagram/profile'),
-          fetch('/api/instagram/media'),
+          fetch('/api/instagram/profile', { headers }),
+          fetch('/api/instagram/media', { headers }),
         ])
         const profile = await profileRes.json()
         const media = await mediaRes.json()
@@ -84,11 +85,15 @@ export default function InsightsPage() {
             })),
           })
         }
-      } catch { /* no IG */ }
-      finally { setLoadingIG(false) }
-    }
-    loadIG()
+    } catch { /* no IG */ }
+    finally { setLoadingIG(false) }
   }, [])
+
+  useEffect(() => {
+    if (tokenLoading) return
+    if (igToken) loadIG(igToken)
+    else setLoadingIG(false)
+  }, [igToken, tokenLoading, loadIG])
 
   async function handleGenerate() {
     if (streaming) return
