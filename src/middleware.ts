@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/login', '/auth/callback']
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
-  // Check Supabase auth cookie
   const cookieName = `sb-ynpqmfyafesxqvzqmszp-auth-token`
   const hasToken = request.cookies.has(cookieName)
 
