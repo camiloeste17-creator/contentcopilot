@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next') ?? '/dashboard'
 
   if (code) {
     const supabase = createClient(
@@ -13,5 +14,7 @@ export async function GET(request: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Redirect to dashboard — client side will handle session
+  const redirectUrl = new URL(next, requestUrl.origin)
+  return NextResponse.redirect(redirectUrl)
 }
